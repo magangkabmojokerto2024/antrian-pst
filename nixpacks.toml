@@ -3,8 +3,9 @@ nixPkgs = ["php83", "php83Extensions.pdo_mysql", "php83Extensions.zip", "php83Ex
 
 [phases.build]
 cmds = [
-    "composer install --no-dev --optimize-autoloader"
+    "composer install --no-dev --optimize-autoloader",
+    "chmod +x start.sh"
 ]
 
 [start]
-cmd = "php artisan migrate --force --seed && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
+cmd = "bash start.sh"
