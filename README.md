@@ -1,59 +1,154 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Antrian PST (Next.js + Supabase)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Proyek ini adalah sistem antrian digital untuk Pelayanan Statistik Terpadu (PST) yang telah di-_rewrite_ menggunakan **Next.js 14** dan **Supabase**.
 
-## About Laravel
+Awalnya proyek ini dibangun dengan Laravel (PHP), lalu dimigrasikan ke Next.js untuk mendukung deployment yang mulus di platform Serverless seperti Vercel.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Fitur
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- 🎟️ **Ambil Antrian (Publik):** Pengunjung dapat mengisi nama, instansi, dan memilih layanan.
+- 📺 **Monitor Realtime (Publik):** Layar display antrian yang *auto-update* tanpa perlu di-_refresh_, menggunakan Supabase Realtime.
+- 🔒 **Admin Panel (Secure):** Manajemen antrian (Panggil, Selesai, Skip, Recall) dan riwayat antrian, dilindungi dengan Supabase Auth.
+- 📊 **Riwayat (Admin):** Merekam data dan statistik harian.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Tech Stack
 
-## Learning Laravel
+- **Framework:** [Next.js 14](https://nextjs.org/) (App Router, Server Actions)
+- **Database:** [Supabase PostgreSQL](https://supabase.com/)
+- **Authentication:** Supabase Auth (Email & Password)
+- **Realtime:** Supabase Realtime Channels
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 🚀 Setup & Panduan Deployment
 
-## Laravel Sponsors
+### 1. Persiapan Supabase (Database & Auth)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+1. Buat project baru di [Supabase Dashboard](https://supabase.com/dashboard).
+2. Pergi ke menu **SQL Editor**, dan jalankan script berikut untuk membuat tabel, function, dan RLS (Row Level Security):
 
-### Premium Partners
+```sql
+-- 1. Create tables
+CREATE TABLE services (
+  id SERIAL PRIMARY KEY,
+  code CHAR(1) UNIQUE NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  description VARCHAR(255),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+CREATE TABLE queue_counters (
+  id SERIAL PRIMARY KEY,
+  service_id INT REFERENCES services(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  last_number SMALLINT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(service_id, date)
+);
 
-## Contributing
+CREATE TABLE queues (
+  id BIGSERIAL PRIMARY KEY,
+  service_id INT REFERENCES services(id) ON DELETE CASCADE,
+  visitor_name VARCHAR(150) NOT NULL,
+  institution VARCHAR(150),
+  queue_number SMALLINT NOT NULL,
+  queue_code VARCHAR(10) NOT NULL,
+  status VARCHAR(10) DEFAULT 'waiting' CHECK (status IN ('waiting', 'called', 'served', 'skipped')),
+  date DATE NOT NULL,
+  called_at TIMESTAMPTZ,
+  served_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_queues_date_service_status ON queues(date, service_id, status);
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+-- 2. Insert Default Services
+INSERT INTO services (code, name, description) VALUES
+  ('A', 'Konsultasi Statistik', 'Konsultasi terkait data dan statistik'),
+  ('B', 'Permintaan Data', 'Permintaan data mikro/makro'),
+  ('C', 'Layanan Lainnya', 'Layanan PST lainnya');
 
-## Code of Conduct
+-- 3. Atomic counter function for new queues
+CREATE OR REPLACE FUNCTION get_next_queue_number(p_service_id INT, p_date DATE)
+RETURNS INT AS $$
+DECLARE v_number INT;
+BEGIN
+  INSERT INTO queue_counters (service_id, date, last_number)
+  VALUES (p_service_id, p_date, 1)
+  ON CONFLICT (service_id, date) 
+  DO UPDATE SET last_number = queue_counters.last_number + 1, updated_at = NOW()
+  RETURNING last_number INTO v_number;
+  RETURN v_number;
+END;
+$$ LANGUAGE plpgsql;
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+-- 4. View for Admin History
+CREATE VIEW queue_history_summary AS
+SELECT 
+  date,
+  COUNT(*) as total,
+  SUM(CASE WHEN status = 'served' THEN 1 ELSE 0 END) as served,
+  SUM(CASE WHEN status = 'waiting' THEN 1 ELSE 0 END) as waiting,
+  SUM(CASE WHEN status = 'skipped' THEN 1 ELSE 0 END) as skipped
+FROM queues
+GROUP BY date;
 
-## Security Vulnerabilities
+-- 5. Enable Realtime on queues table
+ALTER PUBLICATION supabase_realtime ADD TABLE queues;
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+-- 6. Setup Row Level Security (RLS)
+ALTER TABLE services ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public Read" ON services FOR SELECT USING (true);
 
-## License
+ALTER TABLE queue_counters ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public Read" ON queue_counters FOR SELECT USING (true);
+CREATE POLICY "Auth All" ON queue_counters FOR ALL TO authenticated USING (true);
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+ALTER TABLE queues ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public Read" ON queues FOR SELECT USING (true);
+-- Visitors can insert queue, but we handle it via Server Actions
+CREATE POLICY "Public Insert" ON queues FOR INSERT WITH CHECK (true);
+-- Only authenticated admin can update queue status
+CREATE POLICY "Admin Update" ON queues FOR UPDATE TO authenticated USING (true);
+```
+
+### 2. Setup Akun Admin (Supabase Auth)
+Karena ini menggunakan Supabase Auth, Anda tidak perlu membuat form registrasi. Buat akun admin langsung dari dashboard:
+1. Di Supabase, buka menu **Authentication** -> **Users**.
+2. Klik **Add User** -> **Create New User**.
+3. Masukkan Email & Password admin Anda. Uncheck "Auto Confirm User" jika perlu, atau pastikan verifikasi di-disable di Authentication settings.
+
+### 3. Setup Lokal (Development)
+
+1. Clone repositori ini.
+2. Buat file `.env.local` berdasarkan `.env.local.example`.
+3. Dapatkan keys dari Supabase (**Project Settings** -> **API**):
+   - `NEXT_PUBLIC_SUPABASE_URL` -> URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` -> anon / public key
+   - `SUPABASE_SERVICE_ROLE_KEY` -> service_role / secret key (jika butuh, sementara dikosongkan tidak apa)
+4. Install _dependencies_:
+   ```bash
+   npm install
+   ```
+5. Jalankan server lokal:
+   ```bash
+   npm run dev
+   ```
+
+### 4. Deployment ke Vercel (Hobby Plan)
+
+Proyek ini sudah dioptimalkan untuk Vercel:
+1. Login ke [Vercel](https://vercel.com).
+2. Buat _New Project_ dan import dari repositori GitHub proyek ini.
+3. Di bagian **Environment Variables**, tambahkan:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. Klik **Deploy**. Vercel akan otomatis mengenali Next.js dan mem-_build_ aplikasi Anda.
+5. Selesai! Web antrian siap digunakan di URL Vercel yang diberikan.
+
+---
+
+_Catatan: Aplikasi ini secara khusus didesain dengan timezone WIB (UTC+7) di logic backend-nya, sehingga hari dan waktu antrian tetap akurat meskipun dideploy pada server Vercel (yang biasanya UTC)._
