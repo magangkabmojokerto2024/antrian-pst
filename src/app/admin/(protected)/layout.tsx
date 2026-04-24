@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import LogoutButton from "./LogoutButton";
+import LogoutButton from "../LogoutButton";
 
-export default async function AdminLayout({
+export default async function AdminProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -27,7 +27,7 @@ export default async function AdminLayout({
                 </svg>
               </div>
               <div>
-                <h1 className="text-lg font-bold text-slate-800">Antrian PST</h1>
+                <h1 className="text-lg font-bold text-slate-800">Antrian PST Kabupaten Mojokerto</h1>
                 <p className="text-xs text-slate-500 -mt-0.5">Pelayanan Statistik Terpadu</p>
               </div>
             </div>
@@ -54,7 +54,7 @@ export default async function AdminLayout({
         </div>
       </nav>
 
-      {/* Content */}
+      {/* Page Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>

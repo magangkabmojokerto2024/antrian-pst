@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getTodayWIB, SERVICE_COLORS, STATUS_BADGE, STATUS_LABEL, type Queue } from "@/lib/types";
 import Link from "next/link";
-import { callNext, serveQueue, skipQueue, recallQueue } from "./actions";
+import { callNext, serveQueue, skipQueue, recallQueue } from "../actions";
+import DateFilter from "../DateFilter";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Admin Panel — Antrian PST" };
@@ -13,9 +14,9 @@ interface PageProps {
 
 export default async function AdminPage({ searchParams }: PageProps) {
   const { date: rawDate } = await searchParams;
-  const todayStr    = getTodayWIB();
+  const todayStr     = getTodayWIB();
   const selectedDate = rawDate ?? todayStr;
-  const isToday     = selectedDate === todayStr;
+  const isToday      = selectedDate === todayStr;
 
   const supabase = await createClient();
 
@@ -38,7 +39,6 @@ export default async function AdminPage({ searchParams }: PageProps) {
     grouped[q.service_id].push(q);
   }
 
-  // Stats
   const stats = {
     total:   queues.length,
     waiting: queues.filter((q) => q.status === "waiting").length,
@@ -48,11 +48,11 @@ export default async function AdminPage({ searchParams }: PageProps) {
   };
 
   const statCards = [
-    { label:"Total",    value:stats.total,   color:"bg-slate-100 text-slate-800", icon:"📊" },
-    { label:"Menunggu", value:stats.waiting, color:"bg-amber-50 text-amber-700",  icon:"⏳" },
-    { label:"Dipanggil",value:stats.called,  color:"bg-blue-50 text-blue-700",    icon:"📢" },
-    { label:"Selesai",  value:stats.served,  color:"bg-green-50 text-green-700",  icon:"✅" },
-    { label:"Dilewati", value:stats.skipped, color:"bg-red-50 text-red-700",      icon:"⏭️" },
+    { label:"Total",     value:stats.total,   color:"bg-slate-100 text-slate-800", icon:"📊" },
+    { label:"Menunggu",  value:stats.waiting, color:"bg-amber-50 text-amber-700",  icon:"⏳" },
+    { label:"Dipanggil", value:stats.called,  color:"bg-blue-50 text-blue-700",    icon:"📢" },
+    { label:"Selesai",   value:stats.served,  color:"bg-green-50 text-green-700",  icon:"✅" },
+    { label:"Dilewati",  value:stats.skipped, color:"bg-red-50 text-red-700",      icon:"⏭️" },
   ];
 
   const dateLabel = new Date(selectedDate + "T00:00:00").toLocaleDateString("id-ID", {
@@ -70,16 +70,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <form>
-            <input
-              type="date"
-              name="date"
-              defaultValue={selectedDate}
-              max={todayStr}
-              className="px-3 py-2 rounded-xl border border-slate-300 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none"
-              onChange={(e) => { if (typeof window !== "undefined") (e.target.form as HTMLFormElement).submit(); }}
-            />
-          </form>
+          <DateFilter selectedDate={selectedDate} maxDate={todayStr} />
           <Link href="/admin/history" className="px-4 py-2.5 bg-slate-100 text-slate-700 font-semibold rounded-xl border border-slate-200 hover:bg-slate-200 transition text-sm">
             📋 Riwayat
           </Link>
@@ -87,7 +78,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
       </div>
 
       {!isToday && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl flex items-center text-sm animate-fade-in">
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl flex items-center text-sm">
           <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
           Anda sedang melihat riwayat tanggal <strong className="mx-1">{selectedDate}</strong>.
           <Link href="/admin" className="ml-2 underline font-semibold hover:text-amber-900">Kembali ke hari ini →</Link>
@@ -97,7 +88,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {statCards.map((c) => (
-          <div key={c.label} className={`rounded-xl p-4 ${c.color} border border-transparent`}>
+          <div key={c.label} className={`rounded-xl p-4 ${c.color}`}>
             <div className="flex items-center justify-between">
               <span className="text-2xl">{c.icon}</span>
               <span className="text-2xl font-bold">{c.value}</span>
@@ -114,7 +105,6 @@ export default async function AdminPage({ searchParams }: PageProps) {
 
         return (
           <div key={service.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            {/* Service Header */}
             <div className={`bg-gradient-to-r ${hc} px-6 py-4 flex items-center justify-between`}>
               <div className="flex items-center space-x-3">
                 <span className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center text-white text-xl font-bold">
@@ -134,7 +124,6 @@ export default async function AdminPage({ searchParams }: PageProps) {
               )}
             </div>
 
-            {/* Queue Table */}
             {sq.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -162,22 +151,18 @@ export default async function AdminPage({ searchParams }: PageProps) {
                           </span>
                         </td>
                         <td className="px-6 py-3.5 text-sm text-slate-500">
-                          {new Date(q.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" })}
-                          {q.called_at && <><br /><span className="text-xs text-blue-500">📢 {new Date(q.called_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" })}</span></>}
-                          {q.served_at && <><br /><span className="text-xs text-green-500">✅ {new Date(q.served_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" })}</span></>}
+                          {new Date(q.created_at).toLocaleTimeString("id-ID", { hour:"2-digit", minute:"2-digit", timeZone:"Asia/Jakarta" })}
+                          {q.called_at && <><br /><span className="text-xs text-blue-500">📢 {new Date(q.called_at).toLocaleTimeString("id-ID", { hour:"2-digit", minute:"2-digit", timeZone:"Asia/Jakarta" })}</span></>}
+                          {q.served_at && <><br /><span className="text-xs text-green-500">✅ {new Date(q.served_at).toLocaleTimeString("id-ID", { hour:"2-digit", minute:"2-digit", timeZone:"Asia/Jakarta" })}</span></>}
                         </td>
                         {isToday && (
                           <td className="px-6 py-3.5 text-center">
                             <div className="flex items-center justify-center space-x-2">
-                              {q.status === "called" && (
-                                <>
-                                  <form action={serveQueue.bind(null, q.id)}><button type="submit" className="px-3 py-1.5 bg-green-50 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-100 transition border border-green-200">✅ Selesai</button></form>
-                                  <form action={skipQueue.bind(null, q.id)}><button type="submit" className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-semibold hover:bg-red-100 transition border border-red-200">⏭️ Skip</button></form>
-                                </>
-                              )}
-                              {q.status === "skipped" && (
-                                <form action={recallQueue.bind(null, q.id)}><button type="submit" className="px-3 py-1.5 bg-amber-50 text-amber-600 rounded-lg text-xs font-semibold hover:bg-amber-100 transition border border-amber-200">🔁 Recall</button></form>
-                              )}
+                              {q.status === "called" && (<>
+                                <form action={serveQueue.bind(null, q.id)}><button type="submit" className="px-3 py-1.5 bg-green-50 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-100 transition border border-green-200">✅ Selesai</button></form>
+                                <form action={skipQueue.bind(null, q.id)}><button type="submit" className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-semibold hover:bg-red-100 transition border border-red-200">⏭️ Skip</button></form>
+                              </>)}
+                              {q.status === "skipped" && <form action={recallQueue.bind(null, q.id)}><button type="submit" className="px-3 py-1.5 bg-amber-50 text-amber-600 rounded-lg text-xs font-semibold hover:bg-amber-100 transition border border-amber-200">🔁 Recall</button></form>}
                               {q.status === "waiting" && <span className="text-xs text-slate-400">Menunggu</span>}
                               {q.status === "served"  && <span className="text-xs text-slate-400">—</span>}
                             </div>
@@ -190,7 +175,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
               </div>
             ) : (
               <div className="px-6 py-8 text-center text-slate-400">
-                <p className="text-sm">Belum ada antrian untuk layanan ini hari ini</p>
+                <p className="text-sm">Belum ada antrian untuk layanan ini</p>
               </div>
             )}
           </div>

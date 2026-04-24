@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Antrian PST — Pelayanan Statistik Terpadu",
+  title: "Antrian PST Kabupaten Mojokerto — Pelayanan Statistik Terpadu",
   description: "Sistem antrian digital untuk Pelayanan Statistik Terpadu (PST)",
 };
 

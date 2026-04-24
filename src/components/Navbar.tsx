@@ -12,10 +12,9 @@ export default function Navbar({ showAdminLink = true }: NavbarProps) {
 
   const isActive = (prefix: string) => pathname.startsWith(prefix);
   const linkClass = (prefix: string) =>
-    `px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-      isActive(prefix)
-        ? "bg-primary-50 text-primary-700"
-        : "text-slate-600 hover:bg-slate-100"
+    `px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${isActive(prefix)
+      ? "bg-primary-50 text-primary-700"
+      : "text-slate-600 hover:bg-slate-100"
     }`;
 
   return (
@@ -30,7 +29,7 @@ export default function Navbar({ showAdminLink = true }: NavbarProps) {
               </svg>
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-800">Antrian PST</h1>
+              <h1 className="text-lg font-bold text-slate-800">Antrian PST Kabupaten Mojokerto</h1>
               <p className="text-xs text-slate-500 -mt-0.5">Pelayanan Statistik Terpadu</p>
             </div>
           </div>

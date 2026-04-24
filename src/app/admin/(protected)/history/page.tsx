@@ -18,14 +18,12 @@ export default async function HistoryPage({ searchParams }: PageProps) {
 
   const supabase = await createClient();
 
-  // Use the queue_history_summary view (or rpc)
-  const { data: records, error } = await supabase
+  const { data: records } = await supabase
     .from("queue_history_summary")
     .select("*")
     .order("date", { ascending: false })
     .range(offset, offset + PER_PAGE - 1);
 
-  // Total count for pagination
   const { count: total } = await supabase
     .from("queue_history_summary")
     .select("*", { count: "exact", head: true });
@@ -35,7 +33,6 @@ export default async function HistoryPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">📋 Riwayat Antrian</h2>
@@ -46,7 +43,6 @@ export default async function HistoryPage({ searchParams }: PageProps) {
         </Link>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <table className="w-full">
           <thead>
@@ -74,28 +70,17 @@ export default async function HistoryPage({ searchParams }: PageProps) {
               const dateObj  = new Date(rec.date + "T00:00:00");
               const weekday  = dateObj.toLocaleDateString("id-ID", { weekday: "long" });
               const fullDate = dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
-
               return (
                 <tr key={rec.date} className={`hover:bg-slate-50/50 transition ${isToday ? "bg-primary-50/30" : ""}`}>
                   <td className="px-6 py-4">
-                    <div>
-                      <span className="font-semibold text-slate-800 capitalize">{weekday}</span>
-                      {isToday && <span className="ml-2 px-2 py-0.5 bg-primary-100 text-primary-700 rounded-md text-xs font-semibold">Hari ini</span>}
-                      <p className="text-sm text-slate-500">{fullDate}</p>
-                    </div>
+                    <span className="font-semibold text-slate-800 capitalize">{weekday}</span>
+                    {isToday && <span className="ml-2 px-2 py-0.5 bg-primary-100 text-primary-700 rounded-md text-xs font-semibold">Hari ini</span>}
+                    <p className="text-sm text-slate-500">{fullDate}</p>
                   </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="text-lg font-bold text-slate-800">{rec.total}</span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-100 text-green-700">✅ {rec.served}</span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-100 text-amber-700">⏳ {rec.waiting}</span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-100 text-red-700">⏭️ {rec.skipped}</span>
-                  </td>
+                  <td className="px-6 py-4 text-center"><span className="text-lg font-bold text-slate-800">{rec.total}</span></td>
+                  <td className="px-6 py-4 text-center"><span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-100 text-green-700">✅ {rec.served}</span></td>
+                  <td className="px-6 py-4 text-center"><span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-100 text-amber-700">⏳ {rec.waiting}</span></td>
+                  <td className="px-6 py-4 text-center"><span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-100 text-red-700">⏭️ {rec.skipped}</span></td>
                   <td className="px-6 py-4 text-center">
                     <Link href={`/admin?date=${rec.date}`} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-200 transition">
                       👁️ Lihat Detail
@@ -108,22 +93,11 @@ export default async function HistoryPage({ searchParams }: PageProps) {
         </table>
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center gap-2">
-          {page > 1 && (
-            <Link href={`?page=${page - 1}`} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 transition">
-              ← Prev
-            </Link>
-          )}
-          <span className="px-4 py-2 text-sm text-slate-500">
-            Halaman {page} / {totalPages}
-          </span>
-          {page < totalPages && (
-            <Link href={`?page=${page + 1}`} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 transition">
-              Next →
-            </Link>
-          )}
+          {page > 1 && <Link href={`?page=${page - 1}`} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 transition">← Prev</Link>}
+          <span className="px-4 py-2 text-sm text-slate-500">Halaman {page} / {totalPages}</span>
+          {page < totalPages && <Link href={`?page=${page + 1}`} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 transition">Next →</Link>}
         </div>
       )}
     </div>
