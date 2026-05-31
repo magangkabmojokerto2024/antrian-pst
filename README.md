@@ -73,7 +73,9 @@ INSERT INTO services (code, name, description) VALUES
 
 -- 3. Atomic counter function for new queues
 CREATE OR REPLACE FUNCTION get_next_queue_number(p_service_id INT, p_date DATE)
-RETURNS INT AS $$
+RETURNS INT 
+SECURITY DEFINER 
+AS $$
 DECLARE v_number INT;
 BEGIN
   INSERT INTO queue_counters (service_id, date, last_number)

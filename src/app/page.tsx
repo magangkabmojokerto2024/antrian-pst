@@ -24,11 +24,15 @@ async function createQueueAction(formData: FormData) {
 
   if (!service) return;
 
-  // Atomic increment via PostgreSQL function
-  const { data: queueNumber } = await supabase.rpc("get_next_queue_number", {
+  const { data: queueNumber, error: rpcError } = await supabase.rpc("get_next_queue_number", {
     p_service_id: serviceId,
     p_date: today,
   });
+
+  if (rpcError || !queueNumber) {
+    console.error("Failed to get next queue number:", rpcError);
+    return;
+  }
 
   const queueCode = `${service.code}-${queueNumber}`;
 
