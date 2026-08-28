@@ -1,6 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // Standalone Supabase client — no cookies needed for a cron endpoint
 function createCronClient() {
   return createClient(
